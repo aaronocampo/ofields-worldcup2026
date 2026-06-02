@@ -196,6 +196,9 @@
     .bracket-matches { grid-template-columns: 1fr; }
     .third-place-table table { font-size: 0.72rem; }
     .third-place-table th, .third-place-table td { padding: 5px 7px; }
+    /* Hide W D L GF GA on narrow screens — keep P Pts GD */
+    .standings .col-hide { display: none; }
+    .standings td, .standings th { padding: 5px 5px; }
   }
 </style>
 </head>
@@ -671,8 +674,8 @@ function groupCard(g) {
           ${ownerSubselect(s.t,`${g}-${i}`)}
         </div>
       </div></td>
-      <td>${s.p}</td><td>${s.pts}</td><td>${s.w}</td><td>${s.d}</td><td>${s.l}</td>
-      <td>${s.gf}</td><td>${s.ga}</td><td>${s.gd>0?'+':''}${s.gd}</td>
+      <td>${s.p}</td><td>${s.pts}</td><td class="col-hide">${s.w}</td><td class="col-hide">${s.d}</td><td class="col-hide">${s.l}</td>
+      <td class="col-hide">${s.gf}</td><td class="col-hide">${s.ga}</td><td>${s.gd>0?'+':''}${s.gd}</td>
     </tr>`;
   }).join('');
 
@@ -708,7 +711,7 @@ function groupCard(g) {
       <table class="standings">
         <thead><tr>
           <th class="left">Team</th>
-          <th>P</th><th>Pts</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th>
+          <th>P</th><th>Pts</th><th class="col-hide">W</th><th class="col-hide">D</th><th class="col-hide">L</th><th class="col-hide">GF</th><th class="col-hide">GA</th><th>GD</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
