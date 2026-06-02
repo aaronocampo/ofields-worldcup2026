@@ -568,7 +568,9 @@ function scoreKey(g, h, a) {
 }
 
 function blockNonNum(e) {
-  if (['e','E','+','-','.'].includes(e.key)) { e.preventDefault(); return false; }
+  const allowed = ['Backspace','Delete','Tab','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'];
+  if (allowed.includes(e.key)) return;
+  if (!/^\d$/.test(e.key)) { e.preventDefault(); return false; }
 }
 
 // ─── STANDINGS ───────────────────────────────────────────────────────────────
