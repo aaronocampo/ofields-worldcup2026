@@ -641,7 +641,11 @@ function renderLegend() {
 
 // ─── CHANGE OWNER ────────────────────────────────────────────────────────────
 function changeOwner(team, val, id) {
+  console.log('changeOwner called:', JSON.stringify(team), val, id);
+  console.log('dot el:', document.getElementById(`dot-${id}`));
+  console.log('lbl el:', document.getElementById(`lbl-${id}`));
   state.owners[team] = val||null;
+  console.log('state.owners after set:', JSON.stringify(state.owners));
   save();
   const p = val ? PLAYERS[val] : null;
   // Update the visible dot and label in place — no re-render needed
