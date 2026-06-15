@@ -101,10 +101,9 @@
   .score-input:focus { outline: none; border-color: #3b82f6; }
   .score-input::-webkit-outer-spin-button, .score-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .score-sep { color: var(--muted); font-weight: 700; }
-  .match-footer { display: flex; align-items: center; gap: 6px; padding: 4px 10px 5px; background: var(--card2); border-top: 1px solid var(--border); }
-  .save-btn { padding: 3px 10px; background: #2563eb; border: none; border-radius: 5px; color: white; cursor: pointer; font-size: 0.72rem; font-weight: 600; }
-  .save-btn:hover { background: #1d4ed8; }
-  .played-badge { font-size: 0.68rem; color: #22c55e; }
+  .match-score-locked { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 60px; font-size: 1rem; font-weight: 800; color: var(--text); }
+  .edit-score-btn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 0.78rem; padding: 3px 6px; border-radius: 4px; flex-shrink: 0; transition: color 0.15s, background 0.15s; }
+  .edit-score-btn:hover { color: var(--text); background: var(--card2); }
 
   /* SCOREBOARD */
   .scoreboard { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; margin-bottom: 24px; }
@@ -422,6 +421,7 @@ const DEFAULT_OWNERS = {
 };
 
 let state = loadState();
+let editingKeys = new Set(); // match keys currently in edit mode
 
 function loadState() {
   try {
@@ -481,8 +481,21 @@ function clearDirty() {
   btn.textContent = 'Save to Cloud';
 }
 
+function collectPendingScores() {
+  Object.keys(MATCHES).forEach(g => {
+    MATCHES[g].forEach((m, i) => {
+      const hEl = document.getElementById(`sh-${g}-${i}`);
+      const aEl = document.getElementById(`sa-${g}-${i}`);
+      if (hEl && aEl && hEl.value !== '' && aEl.value !== '') {
+        state.scores[scoreKey(g, m.h, m.a)] = [parseInt(hEl.value), parseInt(aEl.value)];
+      }
+    });
+  });
+}
+
 async function manualCloudSave() {
   if (!cloudCfg?.bin || !cloudCfg?.key) { openCloud(); return; }
+  collectPendingScores();
   const btn = document.getElementById('cloud-save-btn');
   btn.textContent = 'Saving…'; btn.disabled = true;
   setCloudStatus('syncing');
@@ -493,8 +506,10 @@ async function manualCloudSave() {
       body: JSON.stringify(state),
     });
     if (!r.ok) throw new Error();
+    editingKeys.clear();
     clearDirty();
     setCloudStatus('ok');
+    renderGroups(); renderScoreboard();
   } catch {
     setCloudStatus('err');
     btn.textContent = 'Save to Cloud';
@@ -515,6 +530,7 @@ async function cloudPull() {
     if (remote?.scores && remote?.owners) {
       state = remote;
       localStorage.setItem('wc2026v3', JSON.stringify(state));
+      editingKeys.clear();
       renderGroups(); renderScoreboard();
       if (document.getElementById('view-knockout').classList.contains('active')) renderKnockout();
     }
@@ -681,28 +697,7 @@ function groupCard(g) {
     </tr>`;
   }).join('');
 
-  const matchRows = MATCHES[g].map((m,i)=>{
-    const sc=state.scores[scoreKey(g,m.h,m.a)];
-    const played=sc!=null;
-    return `<div class="match-row">
-      <div class="match-datetime">${m.d} · ${m.t}</div>
-      <div class="match-body">
-        <div class="match-team home">${m.h} ${F(m.h)}</div>
-        <div class="match-score-area">
-          <input class="score-input" type="number" inputmode="numeric" min="0" max="30" placeholder="-"
-            value="${played?sc[0]:''}" id="sh-${g}-${i}" onkeydown="return blockNonNum(event)">
-          <span class="score-sep">:</span>
-          <input class="score-input" type="number" inputmode="numeric" min="0" max="30" placeholder="-"
-            value="${played?sc[1]:''}" id="sa-${g}-${i}" onkeydown="return blockNonNum(event)">
-        </div>
-        <div class="match-team away">${F(m.a)} ${m.a}</div>
-      </div>
-      <div class="match-footer">
-        <button class="save-btn" onclick="saveScore('${g}',${i})">Save</button>
-        ${played?`<span class="played-badge">✔ ${sc[0]}–${sc[1]}</span>`:''}
-      </div>
-    </div>`;
-  }).join('');
+  const matchRows = MATCHES[g].map((m,i)=>matchRowHtml(g,m,i)).join('');
 
   return `<div class="group-card">
     <div class="group-header">
@@ -715,7 +710,7 @@ function groupCard(g) {
           <th class="left">Team</th>
           <th>P</th><th>Pts</th><th class="col-hide">W</th><th class="col-hide">D</th><th class="col-hide">L</th><th class="col-hide">GF</th><th class="col-hide">GA</th><th>GD</th>
         </tr></thead>
-        <tbody>${rows}</tbody>
+        <tbody id="standings-tbody-${g}">${rows}</tbody>
       </table>
     </div>
     <div class="matches-section">
@@ -724,18 +719,85 @@ function groupCard(g) {
   </div>`;
 }
 
-function saveScore(g, i) {
-  const m=MATCHES[g][i];
-  const h=document.getElementById(`sh-${g}-${i}`).value;
-  const a=document.getElementById(`sa-${g}-${i}`).value;
-  if (h===''||a==='') return;
-  state.scores[scoreKey(g,m.h,m.a)]=[parseInt(h),parseInt(a)];
-  save(); renderGroups(); renderScoreboard();
+function matchRowHtml(g, m, i) {
+  const key = scoreKey(g, m.h, m.a);
+  const sc = state.scores[key];
+  const isEditing = editingKeys.has(key);
+  if (sc != null && !isEditing) {
+    return `<div class="match-row" id="match-${g}-${i}">
+      <div class="match-datetime">${m.d} · ${m.t}</div>
+      <div class="match-body">
+        <div class="match-team home">${m.h} ${F(m.h)}</div>
+        <div class="match-score-locked"><span>${sc[0]}</span><span style="color:var(--muted)">–</span><span>${sc[1]}</span></div>
+        <div class="match-team away">${F(m.a)} ${m.a}</div>
+        <button class="edit-score-btn" onclick="editScore('${g}',${i})" title="Edit score">✏</button>
+      </div>
+    </div>`;
+  }
+  return `<div class="match-row" id="match-${g}-${i}">
+    <div class="match-datetime">${m.d} · ${m.t}</div>
+    <div class="match-body">
+      <div class="match-team home">${m.h} ${F(m.h)}</div>
+      <div class="match-score-area">
+        <input class="score-input" type="number" inputmode="numeric" min="0" max="30" placeholder="-"
+          value="${sc!=null?sc[0]:''}" id="sh-${g}-${i}"
+          oninput="autoSaveScore('${g}',${i})" onkeydown="return blockNonNum(event)">
+        <span class="score-sep">:</span>
+        <input class="score-input" type="number" inputmode="numeric" min="0" max="30" placeholder="-"
+          value="${sc!=null?sc[1]:''}" id="sa-${g}-${i}"
+          oninput="autoSaveScore('${g}',${i})" onkeydown="return blockNonNum(event)">
+      </div>
+      <div class="match-team away">${F(m.a)} ${m.a}</div>
+    </div>
+  </div>`;
+}
+
+function autoSaveScore(g, i) {
+  const m = MATCHES[g][i];
+  const h = document.getElementById(`sh-${g}-${i}`)?.value;
+  const a = document.getElementById(`sa-${g}-${i}`)?.value;
+  const key = scoreKey(g, m.h, m.a);
+  if (h !== '' && a !== '' && h != null && a != null) {
+    state.scores[key] = [parseInt(h), parseInt(a)];
+  } else {
+    delete state.scores[key];
+  }
+  save();
+  const tbody = document.getElementById(`standings-tbody-${g}`);
+  if (tbody) {
+    const st = getStandings(g);
+    tbody.innerHTML = st.map((s, idx) => {
+      const cls = ['pos-1','pos-2','pos-3','pos-4'][idx];
+      const rowCls = idx < 2 ? 'advances' : idx === 2 ? 'third' : '';
+      return `<tr class="${rowCls}">
+        <td class="left"><div class="team-name-cell">
+          <span class="pos-sq ${cls}">${idx+1}</span>
+          <span class="team-flag">${F(s.t)}</span>
+          <div class="team-info">
+            <span class="team-label">${s.t}</span>
+            ${ownerSubselect(s.t,`${g}-${idx}`)}
+          </div>
+        </div></td>
+        <td>${s.p}</td><td>${s.pts}</td><td class="col-hide">${s.w}</td><td class="col-hide">${s.d}</td><td class="col-hide">${s.l}</td>
+        <td class="col-hide">${s.gf}</td><td class="col-hide">${s.ga}</td><td>${s.gd>0?'+':''}${s.gd}</td>
+      </tr>`;
+    }).join('');
+  }
+  renderScoreboard();
+  if (cloudCfg?.bin && cloudCfg?.key) setDirty();
+}
+
+function editScore(g, i) {
+  const key = scoreKey(g, MATCHES[g][i].h, MATCHES[g][i].a);
+  editingKeys.add(key);
+  const el = document.getElementById(`match-${g}-${i}`);
+  if (el) el.outerHTML = matchRowHtml(g, MATCHES[g][i], i);
 }
 
 function resetAll() {
   if (!confirm('Reset all group stage scores?')) return;
-  state.scores={}; save(); renderGroups(); renderScoreboard();
+  state.scores = {}; editingKeys.clear();
+  save(); renderGroups(); renderScoreboard();
 }
 
 // ─── SCOREBOARD ──────────────────────────────────────────────────────────────
