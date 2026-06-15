@@ -622,7 +622,7 @@ function ownerSubselect(team, id) {
   const label = p ? p.name : '—';
   const opts = `<option value="">—</option>`+
     PKEYS.map(k=>`<option value="${k}"${cur===k?' selected':''}>${PLAYERS[k].name}</option>`).join('');
-  const esc = team.replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const esc = team.replace(/"/g,'&quot;').replace(/'/g,"\\'");
   return `<div class="owner-subline-wrap" id="wrap-${id}">
     <span class="owner-dot" id="dot-${id}" style="${dotStyle}"></span>
     <span class="owner-subline-text" id="lbl-${id}">${label}</span>
