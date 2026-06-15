@@ -622,12 +622,12 @@ function ownerSubselect(team, id) {
   const label = p ? p.name : '—';
   const opts = `<option value="">—</option>`+
     PKEYS.map(k=>`<option value="${k}"${cur===k?' selected':''}>${PLAYERS[k].name}</option>`).join('');
-  const esc = team.replace(/"/g,'&quot;').replace(/'/g,"\\'");
+  const teamEsc = team.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
   return `<div class="owner-subline-wrap" id="wrap-${id}">
     <span class="owner-dot" id="dot-${id}" style="${dotStyle}"></span>
     <span class="owner-subline-text" id="lbl-${id}">${label}</span>
     <span class="owner-chevron">▾</span>
-    <select class="owner-subselect" onchange="changeOwner('${esc}',this.value,'${id}')">${opts}</select>
+    <select class="owner-subselect" data-team="${teamEsc}" data-id="${id}" onchange="changeOwner(this.dataset.team,this.value,this.dataset.id)">${opts}</select>
   </div>`;
 }
 
