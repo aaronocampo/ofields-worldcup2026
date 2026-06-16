@@ -95,9 +95,11 @@
   .match-row.played:hover { opacity: 0.75; }
   .match-datetime { text-align: center; font-size: 0.64rem; color: var(--muted); padding: 3px 8px; background: var(--card2); border-bottom: 1px solid var(--border); letter-spacing: 0.02em; }
   .match-body { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 4px; padding: 4px 10px; min-height: 40px; }
-  .match-team { font-size: 0.78rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .match-team.home { text-align: right; }
-  .match-team.away { text-align: left; }
+  .match-team { font-size: 0.78rem; font-weight: 500; display: flex; align-items: center; gap: 4px; overflow: hidden; }
+  .match-team.home { justify-content: flex-end; }
+  .match-team.away { justify-content: flex-start; }
+  .match-team-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .match-flag { flex-shrink: 0; font-size: 0.95rem; }
   .match-score-area { display: flex; align-items: center; gap: 4px; justify-content: center; padding: 0 4px; }
   .score-input { width: 34px; height: 28px; background: var(--card2); border: 1px solid var(--border); border-radius: 5px; color: var(--text); text-align: center; font-size: 0.9rem; font-weight: 700; -moz-appearance: textfield; }
   .score-input:focus { outline: none; border-color: #3b82f6; }
@@ -729,16 +731,16 @@ function matchRowHtml(g, m, i) {
     return `<div class="match-row played" id="match-${g}-${i}">
       <div class="match-datetime">${m.d} · ${m.t}</div>
       <div class="match-body">
-        <div class="match-team home">${m.h} ${F(m.h)}</div>
+        <div class="match-team home"><span class="match-team-name">${m.h}</span><span class="match-flag">${F(m.h)}</span></div>
         <div class="match-score-locked">${sc[0]} <span style="color:var(--muted);font-weight:400">–</span> ${sc[1]} <button class="edit-score-btn" onclick="editScore('${g}',${i})" title="Edit">✏</button></div>
-        <div class="match-team away">${F(m.a)} ${m.a}</div>
+        <div class="match-team away"><span class="match-flag">${F(m.a)}</span><span class="match-team-name">${m.a}</span></div>
       </div>
     </div>`;
   }
   return `<div class="match-row" id="match-${g}-${i}">
     <div class="match-datetime">${m.d} · ${m.t}</div>
     <div class="match-body">
-      <div class="match-team home">${m.h} ${F(m.h)}</div>
+      <div class="match-team home"><span class="match-team-name">${m.h}</span><span class="match-flag">${F(m.h)}</span></div>
       <div class="match-score-area">
         <input class="score-input" type="number" inputmode="numeric" min="0" max="30" placeholder="-"
           value="${sc!=null?sc[0]:''}" id="sh-${g}-${i}"
@@ -748,7 +750,7 @@ function matchRowHtml(g, m, i) {
           value="${sc!=null?sc[1]:''}" id="sa-${g}-${i}"
           oninput="autoSaveScore('${g}',${i})" onkeydown="return blockNonNum(event)">
       </div>
-      <div class="match-team away">${F(m.a)} ${m.a}</div>
+      <div class="match-team away"><span class="match-flag">${F(m.a)}</span><span class="match-team-name">${m.a}</span></div>
     </div>
   </div>`;
 }
