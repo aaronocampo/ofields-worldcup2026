@@ -91,6 +91,8 @@
   .matches-section { padding: 10px 14px 14px; border-top: 1px solid var(--border); }
   .matches-section h4 { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
   .match-row { margin-bottom: 8px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .match-row.played { opacity: 0.45; transition: opacity 0.15s; }
+  .match-row.played:hover { opacity: 0.75; }
   .match-datetime { text-align: center; font-size: 0.64rem; color: var(--muted); padding: 3px 8px; background: var(--card2); border-bottom: 1px solid var(--border); letter-spacing: 0.02em; }
   .match-body { display: flex; align-items: center; gap: 6px; padding: 6px 10px; }
   .match-team { flex: 1; font-size: 0.81rem; font-weight: 500; display: flex; align-items: center; gap: 4px; }
@@ -724,7 +726,7 @@ function matchRowHtml(g, m, i) {
   const sc = state.scores[key];
   const isEditing = editingKeys.has(key);
   if (sc != null && !isEditing) {
-    return `<div class="match-row" id="match-${g}-${i}">
+    return `<div class="match-row played" id="match-${g}-${i}">
       <div class="match-datetime">${m.d} · ${m.t}</div>
       <div class="match-body">
         <div class="match-team home">${m.h} ${F(m.h)}</div>
