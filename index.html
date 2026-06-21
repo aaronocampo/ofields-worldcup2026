@@ -202,6 +202,8 @@
     /* Hide W D L GF GA on narrow screens — keep P Pts GD */
     .standings .col-hide { display: none; }
     .standings td, .standings th { padding: 5px 5px; }
+    /* Prevent iOS auto-zoom on input focus (requires font-size >= 16px) */
+    .score-input, .ko-score-input, input[type="number"], input[type="text"], input[type="password"] { font-size: 16px !important; }
   }
 </style>
 </head>
