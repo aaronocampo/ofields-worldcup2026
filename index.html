@@ -172,6 +172,8 @@
   .cloud-save-btn.dirty { background: #2563eb; border-color: #2563eb; color: #fff; }
   .cloud-save-btn.dirty:hover { background: #1d4ed8; }
   .cloud-save-btn:disabled:not(.dirty) { cursor: default; }
+  /* Mobile floating save button */
+  #fab-save { display: none; }
 
   /* SCOREBOARD TEAM LIST */
   .sb-teams { margin-top: 10px; text-align: left; border-top: 1px solid var(--border); padding-top: 8px; }
@@ -204,6 +206,20 @@
     .standings td, .standings th { padding: 5px 5px; }
     /* Prevent iOS auto-zoom on input focus (requires font-size >= 16px) */
     .score-input, .ko-score-input, input[type="number"], input[type="text"], input[type="password"] { font-size: 16px !important; }
+    /* Floating save button */
+    #fab-save {
+      display: flex; align-items: center; gap: 8px;
+      position: fixed; bottom: 24px; right: 20px; z-index: 200;
+      background: #2563eb; color: #fff;
+      border: none; border-radius: 999px;
+      padding: 12px 22px; font-size: 0.88rem; font-weight: 700;
+      box-shadow: 0 4px 20px rgba(37,99,235,0.45);
+      cursor: pointer; transition: transform 0.2s, opacity 0.2s, background 0.15s;
+      opacity: 0; pointer-events: none; transform: translateY(12px);
+    }
+    #fab-save.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    #fab-save.saving { background: #1d4ed8; }
+    #fab-save:active { transform: scale(0.96); }
   }
 </style>
 </head>
@@ -274,6 +290,9 @@
     </div>
   </div>
 </div>
+
+<!-- Mobile floating save button -->
+<button id="fab-save" onclick="manualCloudSave()">☁ Save to Cloud</button>
 
 <!-- KO Score Modal -->
 <div class="modal-overlay" id="ko-modal">
@@ -494,20 +513,18 @@ function setCloudStatus(s) { // 'idle'|'pending'|'syncing'|'ok'|'err'|'none'
 function setDirty() {
   hasDirty = true;
   const btn = document.getElementById('cloud-save-btn');
-  if (!btn) return;
-  btn.classList.add('dirty');
-  btn.disabled = false;
-  btn.textContent = 'Save to Cloud';
+  if (btn) { btn.classList.add('dirty'); btn.disabled = false; btn.textContent = 'Save to Cloud'; }
+  const fab = document.getElementById('fab-save');
+  if (fab) { fab.textContent = '☁ Save to Cloud'; fab.classList.add('visible'); fab.classList.remove('saving'); }
   setCloudStatus('pending');
 }
 
 function clearDirty() {
   hasDirty = false;
   const btn = document.getElementById('cloud-save-btn');
-  if (!btn) return;
-  btn.classList.remove('dirty');
-  btn.disabled = true;
-  btn.textContent = 'Save to Cloud';
+  if (btn) { btn.classList.remove('dirty'); btn.disabled = true; btn.textContent = 'Save to Cloud'; }
+  const fab = document.getElementById('fab-save');
+  if (fab) fab.classList.remove('visible', 'saving');
 }
 
 function collectPendingScores() {
@@ -526,7 +543,9 @@ async function manualCloudSave() {
   if (!cloudCfg?.bin || !cloudCfg?.key) { openCloud(); return; }
   collectPendingScores();
   const btn = document.getElementById('cloud-save-btn');
-  btn.textContent = 'Saving…'; btn.disabled = true;
+  if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
+  const fab = document.getElementById('fab-save');
+  if (fab) { fab.textContent = '☁ Saving…'; fab.classList.add('saving'); }
   setCloudStatus('syncing');
   try {
     const r = await fetch(`https://api.jsonbin.io/v3/b/${cloudCfg.bin}`, {
