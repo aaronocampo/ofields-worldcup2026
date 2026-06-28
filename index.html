@@ -668,12 +668,32 @@ function thirds() {
     .sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
 }
 
+// Assign top-8 3rd-place teams uniquely to each slot (greedy: fewest options first)
+function computeThirdAssignments() {
+  const top8=thirds().slice(0,8);
+  const SLOTS=['ABCDF','CDFGH','BEFIJ','AEHIJ','CEFHI','EHIJK','EFGIJ','DEIJL'];
+  const assigned=new Set(), result={};
+  for(let pass=0;pass<SLOTS.length;pass++){
+    const remaining=SLOTS.filter(s=>!(s in result));
+    // Pick the slot with fewest unassigned candidates (breaks ties earliest)
+    remaining.sort((a,b)=>{
+      const ca=top8.filter(t=>a.split('').includes(t.g)&&!assigned.has(t.t)).length;
+      const cb=top8.filter(t=>b.split('').includes(t.g)&&!assigned.has(t.t)).length;
+      return ca-cb;
+    });
+    const s=remaining[0]; if(!s) break;
+    const candidate=top8.find(t=>s.split('').includes(t.g)&&!assigned.has(t.t));
+    if(candidate){ result[s]=candidate.t; assigned.add(candidate.t); }
+    else result[s]=null;
+  }
+  return result;
+}
+
 function resolveSlot(slot) {
   const pos=parseInt(slot[0]), groups=slot.slice(1).split('');
   if (groups.length===1) return getStandings(groups[0])[pos-1]?.t||null;
-  const t3=thirds().filter(x=>groups.includes(x.g));
-  const top8=thirds().slice(0,8);
-  return t3.find(x=>top8.some(y=>y.t===x.t))?.t||null;
+  // 3rd-place slots: uniquely assign each team across all 8 slots
+  return computeThirdAssignments()[groups.join('')]||null;
 }
 
 // ─── RENDER HELPERS ──────────────────────────────────────────────────────────
