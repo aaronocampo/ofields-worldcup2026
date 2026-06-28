@@ -873,10 +873,12 @@ function renderScoreboard() {
   const adv={aaron:0,esther:0,isaac:0,owen:0};
   const advTeams={aaron:[],esther:[],isaac:[],owen:[]};
   const elimTeams={aaron:[],esther:[],isaac:[],owen:[]};
+  // Top-8 3rd-place teams also advance to R32
+  const advThirds = new Set(thirds().slice(0,8).map(x=>x.t));
   Object.keys(MATCHES).forEach(g=>{
     getStandings(g).forEach((s,i)=>{
       const o=state.owners[s.t]; if(!o) return;
-      if(i<2){ adv[o]++; advTeams[o].push(s.t); }
+      if(i<2 || advThirds.has(s.t)){ adv[o]++; advTeams[o].push(s.t); }
       else { elimTeams[o].push(s.t); }
     });
   });
