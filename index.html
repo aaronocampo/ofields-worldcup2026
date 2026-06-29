@@ -668,24 +668,26 @@ function thirds() {
     .sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
 }
 
-// Assign top-8 3rd-place teams uniquely to each slot (greedy: fewest options first)
+// Assign top-8 3rd-place teams to slots using augmenting-path bipartite matching
+// Guarantees a valid (non-null) assignment wherever one exists
 function computeThirdAssignments() {
   const top8=thirds().slice(0,8);
   const SLOTS=['ABCDF','CDFGH','BEFIJ','AEHIJ','CEFHI','EHIJK','EFGIJ','DEIJL'];
-  const assigned=new Set(), result={};
-  for(let pass=0;pass<SLOTS.length;pass++){
-    const remaining=SLOTS.filter(s=>!(s in result));
-    // Pick the slot with fewest unassigned candidates (breaks ties earliest)
-    remaining.sort((a,b)=>{
-      const ca=top8.filter(t=>a.split('').includes(t.g)&&!assigned.has(t.t)).length;
-      const cb=top8.filter(t=>b.split('').includes(t.g)&&!assigned.has(t.t)).length;
-      return ca-cb;
-    });
-    const s=remaining[0]; if(!s) break;
-    const candidate=top8.find(t=>s.split('').includes(t.g)&&!assigned.has(t.t));
-    if(candidate){ result[s]=candidate.t; assigned.add(candidate.t); }
-    else result[s]=null;
+  const eligible=SLOTS.map(s=>top8.map((t,i)=>({i,t})).filter(({t})=>s.split('').includes(t.g)));
+  const matchSlot=new Array(SLOTS.length).fill(-1); // matchSlot[si] = team index
+  const matchTeam=new Array(top8.length).fill(-1);  // matchTeam[ti] = slot index
+  function dfs(si, vis) {
+    for(const {i:ti} of eligible[si]){
+      if(vis[ti]) continue; vis[ti]=true;
+      if(matchTeam[ti]===-1||dfs(matchTeam[ti],vis)){
+        matchSlot[si]=ti; matchTeam[ti]=si; return true;
+      }
+    }
+    return false;
   }
+  SLOTS.forEach((_,si)=>dfs(si,new Array(top8.length).fill(false)));
+  const result={};
+  SLOTS.forEach((s,si)=>{ result[s]=matchSlot[si]>=0?top8[matchSlot[si]].t:null; });
   return result;
 }
 
