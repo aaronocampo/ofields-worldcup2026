@@ -88,8 +88,23 @@
   }
 
   /* MATCHES */
-  .matches-section { padding: 10px 14px 14px; border-top: 1px solid var(--border); }
-  .matches-section h4 { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+  .matches-section { padding: 10px 14px 14px; }
+  .matches-details { border-top: 1px solid var(--border); }
+  .matches-summary { cursor: pointer; padding: 8px 14px; font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; list-style: none; display: flex; align-items: center; gap: 6px; user-select: none; }
+  .matches-summary::-webkit-details-marker { display: none; }
+  .matches-summary::before { content: '▶'; font-size: 0.55rem; opacity: 0.5; transition: transform 0.15s; }
+  details[open] .matches-summary::before { transform: rotate(90deg); }
+  .matches-count { font-weight: 400; opacity: 0.6; }
+  /* 3rd place qualifiers section */
+  .thirds-section { margin-top: 20px; }
+  .thirds-section h3 { font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+  .thirds-table { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .thirds-table table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  .thirds-table th { padding: 7px 10px; text-align: left; color: var(--muted); font-weight: 600; font-size: 0.7rem; border-bottom: 1px solid var(--border); }
+  .thirds-table td { padding: 7px 10px; border-bottom: 1px solid rgba(75,85,99,0.2); }
+  .thirds-table tr:last-child td { border-bottom: none; }
+  .thirds-table tr.advances td { background: rgba(34,197,94,0.05); }
+  .thirds-table tr.elim td { opacity: 0.4; }
   .match-row { margin-bottom: 8px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
   .match-row.played { opacity: 0.45; transition: opacity 0.15s; }
   .match-row.played:hover { opacity: 0.75; }
@@ -252,6 +267,7 @@
     <button class="btn-outline" onclick="resetAll()">↺ Reset All Scores</button>
   </div>
   <div class="groups-grid" id="groups-grid"></div>
+  <div id="thirds-section"></div>
 </div>
 <div id="view-knockout" class="view">
   <div id="knockout-content"></div>
@@ -743,9 +759,40 @@ function changeOwner(team, val, id) {
 }
 
 // ─── GROUPS ──────────────────────────────────────────────────────────────────
+function renderThirdsSection() {
+  const el = document.getElementById('thirds-section');
+  if (!el) return;
+  const doneCount = Object.keys(MATCHES).filter(groupDone).length;
+  if (doneCount === 0) { el.innerHTML = ''; return; }
+  const t3 = thirds();
+  const top8 = new Set(t3.slice(0,8).map(x=>x.t));
+  const rows = t3.map((x,i) => {
+    const o=state.owners[x.t], p=o?PLAYERS[o]:null;
+    const adv = top8.has(x.t);
+    return `<tr class="${adv?'advances':'elim'}">
+      <td style="color:var(--muted);width:28px">${i+1}</td>
+      <td><span class="team-flag">${F(x.t)}</span> ${x.t}</td>
+      <td style="color:var(--muted)">Grp ${x.g}</td>
+      <td>${p?`<span class="owner-pill" style="background:${p.color}">${p.name}</span>`:'-'}</td>
+      <td>${x.pts}</td><td>${x.gd>0?'+':''}${x.gd}</td>
+      <td>${adv?'<span style="color:#22c55e;font-size:0.72rem;font-weight:600">✔ Through</span>':'<span style="font-size:0.72rem">Out</span>'}</td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<div class="thirds-section">
+    <h3>🥉 3rd Place Teams</h3>
+    <div class="thirds-table">
+      <table>
+        <thead><tr><th>#</th><th>Team</th><th>Group</th><th>Owner</th><th>Pts</th><th>GD</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
 function renderGroups() {
   document.getElementById('groups-grid').innerHTML =
     Object.keys(MATCHES).map(g=>groupCard(g)).join('');
+  renderThirdsSection();
 }
 
 function groupCard(g) {
@@ -783,9 +830,10 @@ function groupCard(g) {
         <tbody id="standings-tbody-${g}">${rows}</tbody>
       </table>
     </div>
-    <div class="matches-section">
-      <h4>Matches</h4>${matchRows}
-    </div>
+    <details class="matches-details"${done?' ':' open'}>
+      <summary class="matches-summary">Matches <span class="matches-count">${MATCHES[g].length} games</span></summary>
+      <div class="matches-section">${matchRows}</div>
+    </details>
   </div>`;
 }
 
@@ -854,6 +902,7 @@ function autoSaveScore(g, i) {
     }).join('');
   }
   renderScoreboard();
+  renderThirdsSection();
   if (cloudCfg?.bin && cloudCfg?.key) setDirty();
 }
 
