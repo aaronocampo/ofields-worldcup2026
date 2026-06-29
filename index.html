@@ -360,6 +360,18 @@ const FLAGS = {
 };
 const F = t => FLAGS[t]||'🏳️';
 
+// Short names for bracket display only
+const SHORT_NAMES = {
+  'Bosnia and Herzegovina': 'Bosnia',
+  'South Africa':           'S. Africa',
+  'South Korea':            'S. Korea',
+  'New Zealand':            'N. Zealand',
+  "Côte d'Ivoire":          "Côte d'Ivoire",
+  'Saudi Arabia':           'Saudi Arabia',
+  'DR Congo':               'DR Congo',
+};
+const bkName = t => t ? (SHORT_NAMES[t] || t) : t;
+
 // ─── MATCH SCHEDULE (BST dates/times from fwclive.com) ──────────────────────
 const MATCHES = {
   A:[
@@ -1016,7 +1028,7 @@ function koRoundHtml(round, count, label, prev) {
 }
 
 // ─── VISUAL BRACKET ──────────────────────────────────────────────────────────
-const BK_CW=150, BK_MH=50, BK_TH=544, BK_GAP=30, BK_STEP=180;
+const BK_CW=120, BK_MH=50, BK_TH=544, BK_GAP=30, BK_STEP=148;
 const BK_COLS=[
   ['R32',[0,1,2,3,4,5,6,7]],
   ['R16',[0,1,2,3]],
@@ -1056,7 +1068,7 @@ function bkMatchBox(round, idx, x, ty) {
     const sv = score!=null?`<span style="flex-shrink:0;font-size:0.75rem;font-weight:800;color:${win?'#facc15':'#9ca3af'};padding-left:3px">${score}</span>`:'';
     return `<div style="display:flex;align-items:center;gap:4px;padding:0 6px;height:${rh}px;background:${bg};overflow:hidden">
       <span style="flex-shrink:0;font-size:0.82rem;line-height:1">${team?F(team):''}</span>
-      <span style="flex:1;font-size:0.59rem;font-weight:600;color:${nc};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">${team||'<i style="color:#4b5563;font-weight:400">TBD</i>'}</span>
+      <span style="flex:1;font-size:0.59rem;font-weight:600;color:${nc};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">${team?bkName(team):'<i style="color:#4b5563;font-weight:400">TBD</i>'}</span>
       ${sv}
     </div>`;
   };
