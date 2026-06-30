@@ -472,25 +472,26 @@ const MATCHES = {
   ],
 };
 
-// R32 official pairings — order matches official FIFA bracket (determines bracket side)
-// Left side: indices 0-7  |  Right side: indices 8-15
+// R32 official pairings — order matches official FIFA bracket
+// Left side (0-7): Germany/France/S.Africa/Netherlands/Portugal/Spain/USA/Belgium
+// Right side (8-15): Brazil/IvoryCoast/Mexico/England/Argentina/Australia/Switzerland/Colombia
 const R32 = [
-  ['2A','2B'],       // M73: South Africa vs Canada
-  ['1F','2C'],       // M75: Netherlands vs Morocco
-  ['1E','3CDFGH'],   // M74: Germany vs Paraguay
-  ['1I','3EFGIJ'],   // M77: France vs Sweden
-  ['1C','2F'],       // M76: Brazil vs Japan
-  ['2E','2I'],       // M78: Ivory Coast vs Norway
-  ['1A','3CEFHI'],   // M79: Mexico vs Ecuador
-  ['1L','3EHIJK'],   // M80: England vs DR Congo
-  ['1D','3ABCDF'],   // M81: USA vs Bosnia
-  ['1G','3AEHIJ'],   // M82: Belgium vs Senegal
-  ['2K','2L'],       // M83: Portugal vs Croatia
-  ['1H','2J'],       // M84: Spain vs Austria
-  ['1B','3BEFIJ'],   // M85: Switzerland vs Algeria
-  ['1K','3DEIJL'],   // M87: Colombia vs Ghana
-  ['1J','2H'],       // M86: Argentina vs Cape Verde
-  ['2D','2G'],       // M88: Australia vs Egypt
+  ['1E','3CDFGH'],   // M74: Germany vs Paraguay        idx 0  LEFT-top
+  ['1I','3EFGIJ'],   // M77: France vs Sweden           idx 1
+  ['2A','2B'],       // M73: South Africa vs Canada     idx 2
+  ['1F','2C'],       // M75: Netherlands vs Morocco     idx 3
+  ['2K','2L'],       // M83: Portugal vs Croatia        idx 4
+  ['1H','2J'],       // M84: Spain vs Austria           idx 5
+  ['1D','3ABCDF'],   // M81: USA vs Bosnia              idx 6
+  ['1G','3AEHIJ'],   // M82: Belgium vs Senegal         idx 7  LEFT-bot
+  ['1C','2F'],       // M76: Brazil vs Japan            idx 8  RIGHT-top
+  ['2E','2I'],       // M78: Ivory Coast vs Norway      idx 9
+  ['1A','3CEFHI'],   // M79: Mexico vs Ecuador          idx 10
+  ['1L','3EHIJK'],   // M80: England vs DR Congo        idx 11
+  ['1J','2H'],       // M86: Argentina vs Cape Verde    idx 12
+  ['2D','2G'],       // M88: Australia vs Egypt         idx 13
+  ['1B','3BEFIJ'],   // M85: Switzerland vs Algeria     idx 14
+  ['1K','3DEIJL'],   // M87: Colombia vs Ghana          idx 15 RIGHT-bot
 ];
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
@@ -509,25 +510,30 @@ const DEFAULT_OWNERS = {
   'Argentina':'owen','Czechia':'owen',
 };
 
-// Migration: old R32 index → new R32 index (bracket order was corrected)
-const R32_IDX_MAP = {0:4, 2:1, 4:0, 5:10, 6:11, 8:9, 9:5, 10:6, 11:7, 12:14, 13:15, 15:13};
-// old indices 1,3,7,14 had wrong pairings and are discarded
+// Bracket versioning — bump when R32 order changes so migration only runs once
+const BRACKET_V = 3;
+// v1→v2: fixed slot assignments for 4 wrong pairings
+const V1V2 = {0:4,2:1,4:0,5:10,6:11,8:9,9:5,10:6,11:7,12:14,13:15,15:13};
+// v2→v3: fixed left/right bracket sides to match official draw
+const V2V3 = {0:2,1:3,2:0,3:1,4:8,5:9,6:10,7:11,8:6,9:7,10:4,11:5,12:12,13:15,14:14,15:13};
 
-function migrateKoScores(ko) {
-  if (!ko) return {};
-  const out = {};
-  Object.entries(ko).forEach(([key, val]) => {
-    const [round, , idxStr] = key.split('-');
-    if (round === 'R32') {
-      const oldIdx = parseInt(idxStr);
-      const newIdx = R32_IDX_MAP[oldIdx];
-      if (newIdx !== undefined) out[`R32--${newIdx}`] = val;
-      // old indices with wrong pairings → discarded
-    } else {
-      out[key] = val; // R16/QF/SF/FINAL untouched
-    }
-  });
-  return out;
+function migrateKoScores(ko, fromV) {
+  let scores = {...(ko||{})};
+  const applyMap = (map) => {
+    const out = {};
+    Object.entries(scores).forEach(([key, val]) => {
+      const [round,,idxStr] = key.split('-');
+      if (round === 'R32') {
+        const ni = map[parseInt(idxStr)];
+        if (ni !== undefined) out[`R32--${ni}`] = val;
+        // undefined = wrong-pairing entry, discard
+      } else { out[key] = val; }
+    });
+    scores = out;
+  };
+  if (fromV < 2) applyMap(V1V2);
+  if (fromV < 3) applyMap(V2V3);
+  return scores;
 }
 
 let state = loadState();
@@ -538,11 +544,16 @@ function loadState() {
     const raw = localStorage.getItem('wc2026v3');
     if (raw) {
       const s = JSON.parse(raw);
-      s.koScores = migrateKoScores(s.koScores);
+      const v = s.bracketV || 1;
+      if (v < BRACKET_V) {
+        s.koScores = migrateKoScores(s.koScores, v);
+        s.bracketV = BRACKET_V;
+        localStorage.setItem('wc2026v3', JSON.stringify(s));
+      }
       return s;
     }
   } catch(e){}
-  return { scores:{}, koScores:{}, owners: {...DEFAULT_OWNERS} };
+  return { scores:{}, koScores:{}, owners: {...DEFAULT_OWNERS}, bracketV: BRACKET_V };
 }
 
 function save() {
@@ -642,7 +653,11 @@ async function cloudPull() {
     const json = await r.json();
     const remote = json.record;
     if (remote?.scores && remote?.owners) {
-      remote.koScores = migrateKoScores(remote.koScores);
+      const rv = remote.bracketV || 1;
+      if (rv < BRACKET_V) {
+        remote.koScores = migrateKoScores(remote.koScores, rv);
+        remote.bracketV = BRACKET_V;
+      }
       state = remote;
       localStorage.setItem('wc2026v3', JSON.stringify(state));
       editingKeys.clear();
